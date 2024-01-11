@@ -2173,3 +2173,64 @@ func TestNewNSTemplateSetSpec(t *testing.T) {
 		},
 	}, setSpec)
 }
+
+func TestCommunityLabel(t *testing.T) {
+	logf.SetLogger(zap.New(zap.UseDevMode(true)))
+	err := apis.AddToScheme(scheme.Scheme)
+	require.NoError(t, err)
+	base1nsTier := tiertest.Base1nsTier(t, tiertest.CurrentBase1nsTemplates)
+
+	t.Run("community label is set on space if SpaceBinding for user public-viewer is found", func(t *testing.T) {
+		// given
+		s := spacetest.NewSpace(test.HostOperatorNs, "oddity", spacetest.WithSpecTargetCluster("member-1"))
+		sb := spacebindingtest.NewSpaceBinding("public-viewer", s.Name, "public-viewer", s.Name+"-public-viewer")
+		hostClient := test.NewFakeClient(t, s, base1nsTier, sb)
+		member1 := NewMemberClusterWithTenantRole(t, "member-1", corev1.ConditionTrue)
+		ctrl := newReconciler(hostClient, member1)
+
+		// when
+		res, err := ctrl.Reconcile(context.TODO(), requestFor(s))
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, res.Requeue) // requeue requested explicitly when NSTemplateSet is created, even though watching the resource is enough to trigger a new reconcile loop
+		spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).
+			Exists().
+			HasLabelWithValue(space.WorkspaceTypeLabel, space.WorkspaceTypeCommunity)
+
+		t.Run("community label is removed fromspace if SpaceBinding for user public-viewer is deleted", func(t *testing.T) {
+			// given
+			hostClient := test.NewFakeClient(t, s, base1nsTier)
+			member1 := NewMemberClusterWithTenantRole(t, "member-1", corev1.ConditionTrue)
+			ctrl := newReconciler(hostClient, member1)
+
+			// when
+			res, err := ctrl.Reconcile(context.TODO(), requestFor(s))
+
+			// then
+			require.NoError(t, err)
+			assert.True(t, res.Requeue) // requeue requested explicitly when NSTemplateSet is created, even though watching the resource is enough to trigger a new reconcile loop
+			spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).
+				Exists().
+				DoesNotHaveLabel(space.WorkspaceTypeLabel)
+		})
+	})
+
+	t.Run("community label is not set on space if SpaceBinding for user public-viewer is not found", func(t *testing.T) {
+		// given
+		s := spacetest.NewSpace(test.HostOperatorNs, "oddity", spacetest.WithSpecTargetCluster("member-1"))
+		hostClient := test.NewFakeClient(t, s, base1nsTier)
+		member1 := NewMemberClusterWithTenantRole(t, "member-1", corev1.ConditionTrue)
+		ctrl := newReconciler(hostClient, member1)
+
+		// when
+		res, err := ctrl.Reconcile(context.TODO(), requestFor(s))
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, res.Requeue) // requeue requested explicitly when NSTemplateSet is created, even though watching the resource is enough to trigger a new reconcile loop
+		spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).
+			Exists().
+			DoesNotHaveLabel(space.WorkspaceTypeLabel)
+	})
+}

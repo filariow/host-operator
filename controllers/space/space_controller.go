@@ -32,6 +32,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
+const (
+	PublicViewerMUR        = "public-viewer"
+	WorkspaceTypeLabel     = "toolchain.dev.openshift.com/workspace-type"
+	WorkspaceTypeCommunity = "community"
+)
+
 // Reconciler reconciles a Space object
 type Reconciler struct {
 	Client              runtimeclient.Client
@@ -97,6 +103,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return reconcile.Result{}, r.ensureSpaceDeletion(ctx, space)
 	}
 
+	// check if community label is correctly set on space,
+	// if not, update the label and requeue space reconciliation
+	if updated, err := r.ensureCommunityLabelIsSetIfNeeded(ctx, space); err != nil {
+		return ctrl.Result{}, err
+	} else if updated {
+		return ctrl.Result{Requeue: true}, nil
+	}
+
 	// if the NSTemplateSet was created or updated, we want to make sure that the NSTemplateSet Controller was kicked before
 	// reconciling the Space again. In particular, when the NSTemplateSet.Spec is updated, if the Space Controller is triggered
 	// *before* the NSTemplateSet Controller and the NSTemplateSet's status is still `Provisioned` (as it was with the previous templates)
@@ -116,6 +130,66 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// Ensures the community label is set on the space if an SBR for special user public-viewer is found.
+// If any changes is made to the space, this function returns `true` as first value, otherwise `false`.
+func (r *Reconciler) ensureCommunityLabelIsSetIfNeeded(ctx context.Context, space *toolchainv1alpha1.Space) (bool, error) {
+	isCommunity, err := r.isSpaceCommunity(ctx, space)
+	if err != nil {
+		return false, err
+	}
+
+	ll := func() map[string]string {
+		if ll := space.GetLabels(); ll != nil {
+			return ll
+		}
+		return map[string]string{}
+	}()
+
+	t, ok := ll[WorkspaceTypeLabel]
+	switch {
+	case ok && !isCommunity:
+		delete(ll, WorkspaceTypeLabel)
+
+	case ok && isCommunity && t != WorkspaceTypeCommunity:
+		fallthrough
+	case !ok && isCommunity:
+		ll[WorkspaceTypeLabel] = WorkspaceTypeCommunity
+
+	// ok && isCommunity && t == WorkspaceTypeCommunity
+	// !ok && !isCommunity
+	default:
+		return false, nil
+	}
+
+	space.SetLabels(ll)
+	if err := r.Client.Update(ctx, space); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// Auxiliary function to check is Space should be labelled as community or not.
+// This function returns `true` if an SBR for the special user public-viewer is found, otherwise `false`.
+func (r *Reconciler) isSpaceCommunity(ctx context.Context, space *toolchainv1alpha1.Space) (bool, error) {
+	spacebindings := toolchainv1alpha1.SpaceBindingList{}
+	if err := r.Client.List(ctx,
+		&spacebindings,
+		runtimeclient.InNamespace(space.Namespace),
+		runtimeclient.MatchingLabels{
+			toolchainv1alpha1.SpaceBindingSpaceLabelKey: space.Name,
+		},
+	); err != nil {
+		return false, err
+	}
+
+	for _, sb := range spacebindings.Items {
+		if sb.Spec.MasterUserRecord == PublicViewerMUR {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // setFinalizers sets the finalizers for Space
