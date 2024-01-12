@@ -32,11 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-const (
-	PublicViewerMUR        = "public-viewer"
-	WorkspaceTypeLabel     = "toolchain.dev.openshift.com/workspace-type"
-	WorkspaceTypeCommunity = "community"
-)
+const PublicViewerMUR = "public-viewer"
 
 // Reconciler reconciles a Space object
 type Reconciler struct {
@@ -147,17 +143,17 @@ func (r *Reconciler) ensureCommunityLabelIsSetIfNeeded(ctx context.Context, spac
 		return map[string]string{}
 	}()
 
-	t, ok := ll[WorkspaceTypeLabel]
+	t, ok := ll[toolchainv1alpha1.WorkspaceVisibilityLabel]
 	switch {
 	case ok && !isCommunity:
-		delete(ll, WorkspaceTypeLabel)
+		delete(ll, toolchainv1alpha1.WorkspaceVisibilityLabel)
 
-	case ok && isCommunity && t != WorkspaceTypeCommunity:
+	case ok && isCommunity && t != toolchainv1alpha1.WorkspaceVisibilityCommunity:
 		fallthrough
 	case !ok && isCommunity:
-		ll[WorkspaceTypeLabel] = WorkspaceTypeCommunity
+		ll[toolchainv1alpha1.WorkspaceVisibilityLabel] = toolchainv1alpha1.WorkspaceVisibilityCommunity
 
-	// ok && isCommunity && t == WorkspaceTypeCommunity
+	// ok && isCommunity && t == WorkspaceVisibilityCommunity
 	// !ok && !isCommunity
 	default:
 		return false, nil

@@ -2196,7 +2196,7 @@ func TestCommunityLabel(t *testing.T) {
 		assert.True(t, res.Requeue) // requeue requested explicitly when NSTemplateSet is created, even though watching the resource is enough to trigger a new reconcile loop
 		spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).
 			Exists().
-			HasLabelWithValue(space.WorkspaceTypeLabel, space.WorkspaceTypeCommunity)
+			HasLabelWithValue(toolchainv1alpha1.WorkspaceVisibilityLabel, toolchainv1alpha1.WorkspaceVisibilityCommunity)
 
 		t.Run("community label is removed fromspace if SpaceBinding for user public-viewer is deleted", func(t *testing.T) {
 			// given
@@ -2212,7 +2212,7 @@ func TestCommunityLabel(t *testing.T) {
 			assert.True(t, res.Requeue) // requeue requested explicitly when NSTemplateSet is created, even though watching the resource is enough to trigger a new reconcile loop
 			spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).
 				Exists().
-				DoesNotHaveLabel(space.WorkspaceTypeLabel)
+				DoesNotHaveLabel(toolchainv1alpha1.WorkspaceVisibilityLabel)
 		})
 	})
 
@@ -2231,6 +2231,6 @@ func TestCommunityLabel(t *testing.T) {
 		assert.True(t, res.Requeue) // requeue requested explicitly when NSTemplateSet is created, even though watching the resource is enough to trigger a new reconcile loop
 		spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).
 			Exists().
-			DoesNotHaveLabel(space.WorkspaceTypeLabel)
+			DoesNotHaveLabel(toolchainv1alpha1.WorkspaceVisibilityLabel)
 	})
 }
