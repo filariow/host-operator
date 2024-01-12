@@ -190,8 +190,8 @@ github.com/fatih/camelcase v1.0.0/go.mod h1:yN2Sb0lFhZJUdVvtELVWefmrXpuZESvPmqwo
 github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5KwzbycvMj4=
 github.com/fatih/set v0.2.1/go.mod h1:+RKtMCH+favT2+3YecHGxcc0b4KyVWA1QWWJUs4E0CI=
 github.com/felixge/httpsnoop v1.0.1/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
-github.com/filariow/toolchain-api v0.0.0-20240112103745-7c1fd9a4d867 h1:In5jNvHgFFP0LKl4GHkjizdhhmFlxEucaT6sZgXZyjw=
-github.com/filariow/toolchain-api v0.0.0-20240112103745-7c1fd9a4d867/go.mod h1:FO7kgXH1x1LqkF327D5a36u0WIrwjVCbeijPkzgwaZc=
+github.com/filariow/toolchain-api v0.0.0-20240112104636-7754e636a8aa h1:TDLcyJlX7csTcSTE/ZVdnCfd5QeTy6UfF76awp5CHQw=
+github.com/filariow/toolchain-api v0.0.0-20240112104636-7754e636a8aa/go.mod h1:FO7kgXH1x1LqkF327D5a36u0WIrwjVCbeijPkzgwaZc=
 github.com/filariow/toolchain-common v0.0.0-20240112151709-a0f9b68b8064 h1:y//SIuLf4BYh4zIPlhJb9y4DeTI2xDcST80dZqCre6c=
 github.com/filariow/toolchain-common v0.0.0-20240112151709-a0f9b68b8064/go.mod h1:dDBmkQKHMpN54VOc/xSsPp3gK0+iGoYKq3kbtzcwuk0=
 github.com/form3tech-oss/jwt-go v3.2.2+incompatible/go.mod h1:pbq4aXjuKjdthFRnoDwaVPLA+WlJuPGy+QneDUgJi2k=
