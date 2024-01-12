@@ -15,6 +15,7 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
+	"github.com/codeready-toolchain/toolchain-common/pkg/workspace"
 
 	errs "github.com/pkg/errors"
 	"github.com/redhat-cop/operator-utils/pkg/util"
@@ -31,8 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
-
-const PublicViewerMUR = "public-viewer"
 
 // Reconciler reconciles a Space object
 type Reconciler struct {
@@ -181,7 +180,7 @@ func (r *Reconciler) isSpaceCommunity(ctx context.Context, space *toolchainv1alp
 	}
 
 	for _, sb := range spacebindings.Items {
-		if sb.Spec.MasterUserRecord == PublicViewerMUR {
+		if sb.Spec.MasterUserRecord == workspace.PublicViewerMUR {
 			return true, nil
 		}
 	}
