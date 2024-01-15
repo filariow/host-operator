@@ -106,7 +106,7 @@ func TestCreateOrUpdateResources(t *testing.T) {
 			tierTmpls = toolchainv1alpha1.TierTemplateList{}
 			err = clt.List(context.TODO(), &tierTmpls, runtimeclient.InNamespace(namespace))
 			require.NoError(t, err)
-			require.Len(t, tierTmpls.Items, 16) // 4 items for advanced and base tiers + 3 for nocluster tier + 5 for appstudio
+			require.Len(t, tierTmpls.Items, 17)
 			names := []string{}
 			for _, tierTmpl := range tierTmpls.Items {
 				names = append(names, tierTmpl.Name)
@@ -128,6 +128,7 @@ func TestCreateOrUpdateResources(t *testing.T) {
 				"appstudio-admin-123456c-123456c",
 				"appstudio-maintainer-123456d-123456d",
 				"appstudio-contributor-123456e-123456e",
+				"appstudio-viewer-123456f-123456f",
 			}, names)
 
 			// verify that 4 NSTemplateTier CRs were created:
@@ -181,7 +182,7 @@ func TestCreateOrUpdateResources(t *testing.T) {
 			tierTmpls := toolchainv1alpha1.TierTemplateList{}
 			err = clt.List(context.TODO(), &tierTmpls, runtimeclient.InNamespace(namespace))
 			require.NoError(t, err)
-			require.Len(t, tierTmpls.Items, 16) // 4 items for advanced and base tiers + 3 for nocluster tier + 4 for appstudio
+			require.Len(t, tierTmpls.Items, 17)
 			for _, tierTmpl := range tierTmpls.Items {
 				assert.Equal(t, int64(1), tierTmpl.ObjectMeta.Generation) // unchanged
 			}
@@ -244,7 +245,8 @@ func TestCreateOrUpdateResources(t *testing.T) {
 							`appstudio/ns_tenant: "444444b"` + "\n" +
 							`appstudio/spacerole_admin: "444444c"` + "\n" +
 							`appstudio/spacerole_maintainer: "444444d"` + "\n" +
-							`appstudio/spacerole_contributor: "444444e"` + "\n"), nil
+							`appstudio/spacerole_contributor: "444444e"` + "\n" +
+							`appstudio/spacerole_viewer: "444444e"` + "\n"), nil
 				}
 				// return default content for other assets
 				return testnstemplatetiers.Asset(name)
@@ -259,7 +261,7 @@ func TestCreateOrUpdateResources(t *testing.T) {
 			tierTmpls := toolchainv1alpha1.TierTemplateList{}
 			err = clt.List(context.TODO(), &tierTmpls, runtimeclient.InNamespace(namespace))
 			require.NoError(t, err)
-			require.Len(t, tierTmpls.Items, 32) // two versions of: 4 items for advanced and base tiers + 3 for nocluster tier + 4 for appstudio
+			require.Len(t, tierTmpls.Items, 34) // two versions of: 4 items for advanced and base tiers + 3 for nocluster tier + 4 for appstudio
 			for _, tierTmpl := range tierTmpls.Items {
 				assert.Equal(t, int64(1), tierTmpl.ObjectMeta.Generation) // unchanged
 			}
@@ -304,6 +306,7 @@ func TestCreateOrUpdateResources(t *testing.T) {
 						"admin":       "appstudio-admin-444444c-444444c",
 						"maintainer":  "appstudio-maintainer-444444d-444444d",
 						"contributor": "appstudio-contributor-444444e-444444e",
+						"viewer":      "appstudio-viewer-444444f-444444f",
 					},
 				},
 			}

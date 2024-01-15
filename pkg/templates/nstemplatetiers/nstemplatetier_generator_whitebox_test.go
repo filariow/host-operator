@@ -63,7 +63,7 @@ func nsTypes(tier string) []string {
 func roles(tier string) []string {
 	switch tier {
 	case "appstudio", "appstudio-env":
-		return []string{"admin", "maintainer", "contributor"}
+		return []string{"admin", "maintainer", "contributor", "viewer"}
 	default:
 		return []string{"admin"}
 	}
@@ -384,7 +384,7 @@ func TestNewNSTemplateTier(t *testing.T) {
 						switch {
 						case strings.Contains(tierTmpl.Name, "clusterresources"):
 							expectedClusterResourcesTmplRef = tierTmpl.Name
-						case strings.Contains(tierTmpl.Name, "admin") || strings.Contains(tierTmpl.Name, "maintainer") || strings.Contains(tierTmpl.Name, "contributor"):
+						case strings.Contains(tierTmpl.Name, "admin") || strings.Contains(tierTmpl.Name, "maintainer") || strings.Contains(tierTmpl.Name, "contributor") || strings.Contains(tierTmpl.Name, "viewer"):
 							expectedSpaceRoleTmplRefs = append(expectedSpaceRoleTmplRefs, tierTmpl.Name)
 						default:
 							expectedNamespaceTmplRefs = append(expectedNamespaceTmplRefs, tierTmpl.Name)
@@ -402,7 +402,6 @@ func TestNewNSTemplateTier(t *testing.T) {
 						actualSpaceRoleTmplRefs = append(actualSpaceRoleTmplRefs, role.TemplateRef)
 					}
 					assert.ElementsMatch(t, expectedSpaceRoleTmplRefs, actualSpaceRoleTmplRefs)
-
 				}
 			}
 		})
@@ -449,6 +448,7 @@ func TestNewNSTemplateTier(t *testing.T) {
 					"admin":       "123456c-123456c",
 					"maintainer":  "123456d-123456d",
 					"contributor": "123456e-123456e",
+					"viewer":      "123456f-123456f",
 				},
 			}
 			for tier := range namespaceRevisions {
