@@ -29,6 +29,34 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+func TestPublicViewer(t *testing.T) {
+	sbLaraRedhatAdmin := sb.NewSpaceBinding("lara", "redhat", "admin", "signupA")
+	sbJoeRedhatView := sb.NewSpaceBinding("joe", "redhat", "view", "signupB")
+	sbLaraIbmEdit := sb.NewSpaceBinding("lara", "ibm", "edit", "signupC")
+	sbPublicViewerIbm := sb.NewSpaceBinding("public-viewer", "ibm", "viewer", "signupD")
+
+	redhatSpace := spacetest.NewSpace(test.HostOperatorNs, "redhat")
+	ibmSpace := spacetest.NewSpace(test.HostOperatorNs, "ibm")
+
+	laraMur := masteruserrecord.NewMasterUserRecord(t, "lara")
+
+	t.Run("public-viewer SpaceBinding is not removed", func(t *testing.T) {
+
+		fakeClient := test.NewFakeClient(t, sbJoeRedhatView, sbLaraRedhatAdmin, sbLaraIbmEdit, laraMur, ibmSpace, redhatSpace, sbPublicViewerIbm)
+		reconciler := prepareReconciler(t, fakeClient)
+
+		// when
+		res, err := reconciler.Reconcile(context.TODO(), requestFor(sbPublicViewerIbm))
+
+		// then
+		require.Equal(t, res.RequeueAfter, time.Duration(0)) // no requeue
+		require.NoError(t, err)
+		sb.AssertThatSpaceBinding(t, test.HostOperatorNs, "lara", "redhat", fakeClient).Exists()
+		sb.AssertThatSpaceBinding(t, test.HostOperatorNs, "lara", "ibm", fakeClient).Exists()
+		sb.AssertThatSpaceBinding(t, test.HostOperatorNs, "public-viewer", "ibm", fakeClient).Exists()
+	})
+}
+
 func TestDeleteSpaceBinding(t *testing.T) {
 	// given
 	sbLaraRedhatAdmin := sb.NewSpaceBinding("lara", "redhat", "admin", "signupA")

@@ -6,6 +6,7 @@ import (
 
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/host-operator/controllers/toolchainconfig"
+	"github.com/codeready-toolchain/toolchain-common/pkg/workspace"
 
 	"github.com/codeready-toolchain/host-operator/pkg/cluster"
 	"github.com/go-logr/logr"
@@ -87,6 +88,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		}
 		// error while reading space
 		return ctrl.Result{}, errs.Wrapf(err, "unable to get the bound Space")
+	}
+
+	if spaceBinding.Spec.MasterUserRecord == workspace.PublicViewerMUR {
+		return ctrl.Result{}, nil
 	}
 
 	murName := types.NamespacedName{Namespace: spaceBinding.Namespace, Name: spaceBinding.Spec.MasterUserRecord}
