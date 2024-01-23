@@ -45,165 +45,81 @@ func TestCreateSpaceBindingRequest(t *testing.T) {
 		spacebindingrequesttest.WithMUR("jane"),
 		spacebindingrequesttest.WithSpaceRole("admin"))
 	t.Run("success", func(t *testing.T) {
-		t.Run("MUR-backed SBR", func(t *testing.T) {
-			t.Run("spaceBinding doesn't exists it should be created", func(t *testing.T) {
-				// given
-				member1 := NewMemberClusterWithClient(test.NewFakeClient(t, sbr, sbrNamespace), "member-1", corev1.ConditionTrue)
-				hostClient := test.NewFakeClient(t, janeSpace, janeMur, base1nsTier)
-				ctrl := newReconciler(t, hostClient, member1)
 
-				// when
-				_, err = ctrl.Reconcile(context.TODO(), requestFor(sbr))
+		t.Run("spaceBinding doesn't exists it should be created", func(t *testing.T) {
+			// given
+			member1 := NewMemberClusterWithClient(test.NewFakeClient(t, sbr, sbrNamespace), "member-1", corev1.ConditionTrue)
+			hostClient := test.NewFakeClient(t, janeSpace, janeMur, base1nsTier)
+			ctrl := newReconciler(t, hostClient, member1)
 
-				// then
-				require.NoError(t, err)
-				// spaceBindingRequest exists with config and finalizer
-				spacebindingrequesttest.AssertThatSpaceBindingRequest(t, sbr.GetNamespace(), sbr.GetName(), member1.Client).
-					HasSpecSpaceRole("admin").
-					HasSpecMasterUserRecord(janeMur.Name).
-					HasConditions(spacebindingrequesttestcommon.Ready()).
-					HasFinalizer()
-				// there should be 1 spacebinding that was created from the SpaceBindingRequest
-				spacebindingtest.AssertThatSpaceBinding(t, test.HostOperatorNs, janeMur.Name, janeSpace.Name, hostClient).
-					Exists().
-					HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestLabelKey, sbr.GetName()). // check expected labels are there
-					HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, sbr.GetNamespace())
-			})
+			// when
+			_, err = ctrl.Reconcile(context.TODO(), requestFor(sbr))
 
-			t.Run("spaceBinding exists and is up-to-date", func(t *testing.T) {
-				// given
-				spaceBinding := spacebindingtest.NewSpaceBinding(janeMur.Name, janeSpace.Name, "admin", sbr.GetName(), spacebindingtest.WithSpaceBindingRequest(sbr))
-				member1 := NewMemberClusterWithClient(test.NewFakeClient(t, sbr, sbrNamespace), "member-1", corev1.ConditionTrue)
-				hostClient := test.NewFakeClient(t, janeSpace, janeMur, base1nsTier, spaceBinding)
-				ctrl := newReconciler(t, hostClient, member1)
-
-				// when
-				_, err = ctrl.Reconcile(context.TODO(), requestFor(sbr))
-
-				// then
-				require.NoError(t, err)
-				// spaceBindingRequest exists with config and finalizer
-				spacebindingrequesttest.AssertThatSpaceBindingRequest(t, sbr.GetNamespace(), sbr.GetName(), member1.Client).
-					HasSpecSpaceRole("admin").
-					HasSpecMasterUserRecord(janeMur.Name).
-					HasConditions(spacebindingrequesttestcommon.Ready()).
-					HasFinalizer()
-				// there should be 1 spacebinding that was created from the SpaceBindingRequest
-				spacebindingtest.AssertThatSpaceBinding(t, test.HostOperatorNs, janeMur.Name, janeSpace.Name, hostClient).Exists().
-					HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestLabelKey, sbr.GetName()). // check expected labels are there
-					HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, sbr.GetNamespace())
-			})
-
-			t.Run("member1 GET request fails, member2 GET returns not found but SpaceBindingRequest is on member3", func(t *testing.T) {
-				// given
-				member1Client := test.NewFakeClient(t)
-				member1Client.MockGet = mockGetSpaceBindingRequestFail(member1Client)
-				member1 := NewMemberClusterWithClient(member1Client, "member-1", corev1.ConditionTrue)
-				member2 := NewMemberClusterWithClient(test.NewFakeClient(t), "member-2", corev1.ConditionTrue)
-				member3 := NewMemberClusterWithClient(test.NewFakeClient(t, sbr, sbrNamespace), "member-3", corev1.ConditionTrue)
-				hostClient := test.NewFakeClient(t, janeSpace, janeMur, base1nsTier)
-				ctrl := newReconciler(t, hostClient, member1, member2, member3)
-
-				// when
-				_, err = ctrl.Reconcile(context.TODO(), requestFor(sbr))
-
-				// then
-				require.NoError(t, err)
-				// spaceBindingRequest exists with config and finalizer
-				spacebindingrequesttest.AssertThatSpaceBindingRequest(t, sbr.GetNamespace(), sbr.GetName(), member3.Client).
-					HasSpecSpaceRole("admin").
-					HasSpecMasterUserRecord(janeMur.Name).
-					HasConditions(spacebindingrequesttestcommon.Ready()).
-					HasFinalizer()
-				// there should be 1 spacebinding that was created from the SpaceBindingRequest
-				spacebindingtest.AssertThatSpaceBinding(t, test.HostOperatorNs, janeMur.Name, janeSpace.Name, hostClient).
-					Exists().
-					HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestLabelKey, sbr.GetName()). // check expected labels are there
-					HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, sbr.GetNamespace())
-			})
+			// then
+			require.NoError(t, err)
+			// spaceBindingRequest exists with config and finalizer
+			spacebindingrequesttest.AssertThatSpaceBindingRequest(t, sbr.GetNamespace(), sbr.GetName(), member1.Client).
+				HasSpecSpaceRole("admin").
+				HasSpecMasterUserRecord(janeMur.Name).
+				HasConditions(spacebindingrequesttestcommon.Ready()).
+				HasFinalizer()
+			// there should be 1 spacebinding that was created from the SpaceBindingRequest
+			spacebindingtest.AssertThatSpaceBinding(t, test.HostOperatorNs, janeMur.Name, janeSpace.Name, hostClient).
+				Exists().
+				HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestLabelKey, sbr.GetName()). // check expected labels are there
+				HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, sbr.GetNamespace())
 		})
 
-		t.Run("public-viewer", func(t *testing.T) {
-			sbrNamespace := spacerequesttest.NewNamespace("jane")
-			sbr := spacebindingrequesttest.NewSpaceBindingRequest("public-viewer", "jane-tenant",
-				spacebindingrequesttest.WithMUR("public-viewer"),
-				spacebindingrequesttest.WithSpaceRole("viewer"))
+		t.Run("spaceBinding exists and is up-to-date", func(t *testing.T) {
+			// given
+			spaceBinding := spacebindingtest.NewSpaceBinding(janeMur.Name, janeSpace.Name, "admin", sbr.GetName(), spacebindingtest.WithSpaceBindingRequest(sbr))
+			member1 := NewMemberClusterWithClient(test.NewFakeClient(t, sbr, sbrNamespace), "member-1", corev1.ConditionTrue)
+			hostClient := test.NewFakeClient(t, janeSpace, janeMur, base1nsTier, spaceBinding)
+			ctrl := newReconciler(t, hostClient, member1)
 
-			t.Run("spaceBinding doesn't exists it should be created", func(t *testing.T) {
-				// given
-				member1 := NewMemberClusterWithClient(test.NewFakeClient(t, sbr, sbrNamespace), "member-1", corev1.ConditionTrue)
-				hostClient := test.NewFakeClient(t, janeSpace, base1nsTier)
-				ctrl := newReconciler(t, hostClient, member1)
+			// when
+			_, err = ctrl.Reconcile(context.TODO(), requestFor(sbr))
 
-				// when
-				_, err = ctrl.Reconcile(context.TODO(), requestFor(sbr))
+			// then
+			require.NoError(t, err)
+			// spaceBindingRequest exists with config and finalizer
+			spacebindingrequesttest.AssertThatSpaceBindingRequest(t, sbr.GetNamespace(), sbr.GetName(), member1.Client).
+				HasSpecSpaceRole("admin").
+				HasSpecMasterUserRecord(janeMur.Name).
+				HasConditions(spacebindingrequesttestcommon.Ready()).
+				HasFinalizer()
+			// there should be 1 spacebinding that was created from the SpaceBindingRequest
+			spacebindingtest.AssertThatSpaceBinding(t, test.HostOperatorNs, janeMur.Name, janeSpace.Name, hostClient).Exists().
+				HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestLabelKey, sbr.GetName()). // check expected labels are there
+				HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, sbr.GetNamespace())
+		})
 
-				// then
-				require.NoError(t, err)
-				// spaceBindingRequest exists with config and finalizer
-				spacebindingrequesttest.AssertThatSpaceBindingRequest(t, sbr.GetNamespace(), sbr.GetName(), member1.Client).
-					HasSpecSpaceRole("viewer").
-					HasSpecMasterUserRecord("public-viewer").
-					HasConditions(spacebindingrequesttestcommon.Ready()).
-					HasFinalizer()
-				// there should be 1 spacebinding that was created from the SpaceBindingRequest
-				spacebindingtest.AssertThatSpaceBinding(t, test.HostOperatorNs, "public-viewer", janeSpace.Name, hostClient).
-					Exists().
-					HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestLabelKey, sbr.GetName()). // check expected labels are there
-					HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, sbr.GetNamespace())
-			})
+		t.Run("member1 GET request fails, member2 GET returns not found but SpaceBindingRequest is on member3", func(t *testing.T) {
+			// given
+			member1Client := test.NewFakeClient(t)
+			member1Client.MockGet = mockGetSpaceBindingRequestFail(member1Client)
+			member1 := NewMemberClusterWithClient(member1Client, "member-1", corev1.ConditionTrue)
+			member2 := NewMemberClusterWithClient(test.NewFakeClient(t), "member-2", corev1.ConditionTrue)
+			member3 := NewMemberClusterWithClient(test.NewFakeClient(t, sbr, sbrNamespace), "member-3", corev1.ConditionTrue)
+			hostClient := test.NewFakeClient(t, janeSpace, janeMur, base1nsTier)
+			ctrl := newReconciler(t, hostClient, member1, member2, member3)
 
-			t.Run("spaceBinding exists and is up-to-date", func(t *testing.T) {
-				// given
-				spaceBinding := spacebindingtest.NewSpaceBinding("public-viewer", janeSpace.Name, "admin", sbr.GetName(), spacebindingtest.WithSpaceBindingRequest(sbr))
-				member1 := NewMemberClusterWithClient(test.NewFakeClient(t, sbr, sbrNamespace), "member-1", corev1.ConditionTrue)
-				hostClient := test.NewFakeClient(t, janeSpace, janeMur, base1nsTier, spaceBinding)
-				ctrl := newReconciler(t, hostClient, member1)
+			// when
+			_, err = ctrl.Reconcile(context.TODO(), requestFor(sbr))
 
-				// when
-				_, err = ctrl.Reconcile(context.TODO(), requestFor(sbr))
-
-				// then
-				require.NoError(t, err)
-				// spaceBindingRequest exists with config and finalizer
-				spacebindingrequesttest.AssertThatSpaceBindingRequest(t, sbr.GetNamespace(), sbr.GetName(), member1.Client).
-					HasSpecSpaceRole("viewer").
-					HasSpecMasterUserRecord("public-viewer").
-					HasConditions(spacebindingrequesttestcommon.Ready()).
-					HasFinalizer()
-				// there should be 1 spacebinding that was created from the SpaceBindingRequest
-				spacebindingtest.AssertThatSpaceBinding(t, test.HostOperatorNs, "public-viewer", janeSpace.Name, hostClient).Exists().
-					HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestLabelKey, sbr.GetName()). // check expected labels are there
-					HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, sbr.GetNamespace())
-			})
-
-			t.Run("member1 GET request fails, member2 GET returns not found but SpaceBindingRequest is on member3", func(t *testing.T) {
-				// given
-				member1Client := test.NewFakeClient(t)
-				member1Client.MockGet = mockGetSpaceBindingRequestFail(member1Client)
-				member1 := NewMemberClusterWithClient(member1Client, "member-1", corev1.ConditionTrue)
-				member2 := NewMemberClusterWithClient(test.NewFakeClient(t), "member-2", corev1.ConditionTrue)
-				member3 := NewMemberClusterWithClient(test.NewFakeClient(t, sbr, sbrNamespace), "member-3", corev1.ConditionTrue)
-				hostClient := test.NewFakeClient(t, janeSpace, janeMur, base1nsTier)
-				ctrl := newReconciler(t, hostClient, member1, member2, member3)
-
-				// when
-				_, err = ctrl.Reconcile(context.TODO(), requestFor(sbr))
-
-				// then
-				require.NoError(t, err)
-				// spaceBindingRequest exists with config and finalizer
-				spacebindingrequesttest.AssertThatSpaceBindingRequest(t, sbr.GetNamespace(), sbr.GetName(), member3.Client).
-					HasSpecSpaceRole("viewer").
-					HasSpecMasterUserRecord("public-viewer").
-					HasConditions(spacebindingrequesttestcommon.Ready()).
-					HasFinalizer()
-				// there should be 1 spacebinding that was created from the SpaceBindingRequest
-				spacebindingtest.AssertThatSpaceBinding(t, test.HostOperatorNs, "public-viewer", janeSpace.Name, hostClient).
-					Exists().
-					HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestLabelKey, sbr.GetName()). // check expected labels are there
-					HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, sbr.GetNamespace())
-			})
+			// then
+			require.NoError(t, err)
+			// spaceBindingRequest exists with config and finalizer
+			spacebindingrequesttest.AssertThatSpaceBindingRequest(t, sbr.GetNamespace(), sbr.GetName(), member3.Client).
+				HasSpecSpaceRole("admin").
+				HasSpecMasterUserRecord(janeMur.Name).
+				HasConditions(spacebindingrequesttestcommon.Ready()).
+				HasFinalizer()
+			// there should be 1 spacebinding that was created from the SpaceBindingRequest
+			spacebindingtest.AssertThatSpaceBinding(t, test.HostOperatorNs, janeMur.Name, janeSpace.Name, hostClient).
+				Exists().
+				HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestLabelKey, sbr.GetName()). // check expected labels are there
+				HasLabelWithValue(toolchainv1alpha1.SpaceBindingRequestNamespaceLabelKey, sbr.GetNamespace())
 		})
 	})
 

@@ -9,12 +9,10 @@ import (
 	"github.com/codeready-toolchain/host-operator/pkg/cluster"
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
-	"github.com/codeready-toolchain/toolchain-common/pkg/workspace"
 	errs "github.com/pkg/errors"
 	"github.com/redhat-cop/operator-utils/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -241,9 +239,13 @@ func (r *Reconciler) ensureSpaceBinding(ctx context.Context, memberCluster clust
 	}
 
 	// validate MUR
-	mur, err := r.fetchMasterUserRecord(ctx, spaceBindingRequest)
+	mur, err := r.getMUR(ctx, spaceBindingRequest)
 	if err != nil {
 		return err
+	}
+	// mur is being deleted
+	if util.IsBeingDeleted(mur) {
+		return errs.New("mur is being deleted")
 	}
 
 	// validate Role
@@ -258,28 +260,6 @@ func (r *Reconciler) ensureSpaceBinding(ctx context.Context, memberCluster clust
 
 	logger.Info("SpaceBinding already exists")
 	return r.updateExistingSpaceBinding(ctx, spaceBindingRequest, spaceBinding)
-}
-
-func (r *Reconciler) fetchMasterUserRecord(ctx context.Context, spaceBindingRequest *toolchainv1alpha1.SpaceBindingRequest) (*toolchainv1alpha1.MasterUserRecord, error) {
-	// skip validation if MUR is public-viewer
-	if spaceBindingRequest.Spec.MasterUserRecord == workspace.PublicViewerMUR {
-		return &toolchainv1alpha1.MasterUserRecord{
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: r.Namespace,
-				Name:      workspace.PublicViewerMUR,
-			},
-		}, nil
-	}
-
-	mur, err := r.getMUR(ctx, spaceBindingRequest)
-	if err != nil {
-		return mur, err
-	}
-	// mur is being deleted
-	if util.IsBeingDeleted(mur) {
-		return nil, errs.New("mur is being deleted")
-	}
-	return mur, nil
 }
 
 // sbrOwnsSpaceBinding check if the SpaceBinding was created by the given SpaceBindingRequest resource
