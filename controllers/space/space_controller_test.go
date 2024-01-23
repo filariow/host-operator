@@ -2174,51 +2174,17 @@ func TestNewNSTemplateSetSpec(t *testing.T) {
 	}, setSpec)
 }
 
-func TestCommunityLabel(t *testing.T) {
+func TestCommunityField(t *testing.T) {
 	logf.SetLogger(zap.New(zap.UseDevMode(true)))
 	err := apis.AddToScheme(scheme.Scheme)
 	require.NoError(t, err)
 	base1nsTier := tiertest.Base1nsTier(t, tiertest.CurrentBase1nsTemplates)
 
-	t.Run("community label is set on space if SpaceBinding for user public-viewer is found", func(t *testing.T) {
+	t.Run("community SpaceBinding for user public-viewer is created for community space", func(t *testing.T) {
 		// given
 		s := spacetest.NewSpace(test.HostOperatorNs, "oddity", spacetest.WithSpecTargetCluster("member-1"))
-		sb := spacebindingtest.NewSpaceBinding("public-viewer", s.Name, "public-viewer", s.Name+"-public-viewer")
-		hostClient := test.NewFakeClient(t, s, base1nsTier, sb)
-		member1 := NewMemberClusterWithTenantRole(t, "member-1", corev1.ConditionTrue)
-		ctrl := newReconciler(hostClient, member1)
+		s.Config.Visibility = toolchainv1alpha1.SpaceVisibilityCommunity
 
-		// when
-		res, err := ctrl.Reconcile(context.TODO(), requestFor(s))
-
-		// then
-		require.NoError(t, err)
-		assert.True(t, res.Requeue) // requeue requested explicitly when NSTemplateSet is created, even though watching the resource is enough to trigger a new reconcile loop
-		spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).
-			Exists().
-			HasLabelWithValue(toolchainv1alpha1.WorkspaceVisibilityLabel, toolchainv1alpha1.WorkspaceVisibilityCommunity)
-
-		t.Run("community label is removed fromspace if SpaceBinding for user public-viewer is deleted", func(t *testing.T) {
-			// given
-			hostClient := test.NewFakeClient(t, s, base1nsTier)
-			member1 := NewMemberClusterWithTenantRole(t, "member-1", corev1.ConditionTrue)
-			ctrl := newReconciler(hostClient, member1)
-
-			// when
-			res, err := ctrl.Reconcile(context.TODO(), requestFor(s))
-
-			// then
-			require.NoError(t, err)
-			assert.True(t, res.Requeue) // requeue requested explicitly when NSTemplateSet is created, even though watching the resource is enough to trigger a new reconcile loop
-			spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).
-				Exists().
-				DoesNotHaveLabel(toolchainv1alpha1.WorkspaceVisibilityLabel)
-		})
-	})
-
-	t.Run("community label is not set on space if SpaceBinding for user public-viewer is not found", func(t *testing.T) {
-		// given
-		s := spacetest.NewSpace(test.HostOperatorNs, "oddity", spacetest.WithSpecTargetCluster("member-1"))
 		hostClient := test.NewFakeClient(t, s, base1nsTier)
 		member1 := NewMemberClusterWithTenantRole(t, "member-1", corev1.ConditionTrue)
 		ctrl := newReconciler(hostClient, member1)
@@ -2229,8 +2195,26 @@ func TestCommunityLabel(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.True(t, res.Requeue) // requeue requested explicitly when NSTemplateSet is created, even though watching the resource is enough to trigger a new reconcile loop
-		spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).
-			Exists().
-			DoesNotHaveLabel(toolchainv1alpha1.WorkspaceVisibilityLabel)
+		spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).Exists()
+		spacebindingtest.AssertThatSpaceBinding(t, s.Namespace, "public-viewer", s.Name, hostClient).Exists()
+
+		t.Run("SpaceBinding for user public-viewer is deleted when community space is set as private", func(t *testing.T) {
+			// given
+			s = s.DeepCopy()
+			s.Config.Visibility = toolchainv1alpha1.SpaceVisibilityPrivate
+
+			hostClient := test.NewFakeClient(t, s, base1nsTier)
+			member1 := NewMemberClusterWithTenantRole(t, "member-1", corev1.ConditionTrue)
+			ctrl := newReconciler(hostClient, member1)
+
+			// when
+			res, err := ctrl.Reconcile(context.TODO(), requestFor(s))
+
+			// then
+			require.NoError(t, err)
+			assert.True(t, res.Requeue) // requeue requested explicitly when NSTemplateSet is created, even though watching the resource is enough to trigger a new reconcile loop
+			spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).Exists()
+			spacebindingtest.AssertThatSpaceBinding(t, s.Namespace, "public-viewer", s.Name, hostClient).DoesNotExist()
+		})
 	})
 }

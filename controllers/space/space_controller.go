@@ -100,7 +100,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 	// check if community label is correctly set on space,
 	// if not, update the label and requeue space reconciliation
-	if updated, err := r.ensureCommunityLabelIsSetIfNeeded(ctx, space); err != nil {
+	if updated, err := r.ensureCommunitySpaceBindingExistsIfNeeded(ctx, space); err != nil {
 		return ctrl.Result{}, err
 	} else if updated {
 		return ctrl.Result{Requeue: true}, nil
@@ -129,40 +129,57 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 // Ensures the community label is set on the space if an SBR for special user public-viewer is found.
 // If any changes is made to the space, this function returns `true` as first value, otherwise `false`.
-func (r *Reconciler) ensureCommunityLabelIsSetIfNeeded(ctx context.Context, space *toolchainv1alpha1.Space) (bool, error) {
-	isCommunity, err := r.isSpaceCommunity(ctx, space)
-	if err != nil {
-		return false, err
-	}
+func (r *Reconciler) ensureCommunitySpaceBindingExistsIfNeeded(ctx context.Context, space *toolchainv1alpha1.Space) (bool, error) {
+	isCommunity := space.Config.Visibility == toolchainv1alpha1.SpaceVisibilityCommunity
+	n := fmt.Sprintf("public-viewer:%s", space.Name)
+	sb := toolchainv1alpha1.SpaceBinding{}
+	t := types.NamespacedName{Namespace: space.Namespace, Name: n}
+	err := r.Client.Get(ctx, t, &sb)
 
-	ll := func() map[string]string {
-		if ll := space.GetLabels(); ll != nil {
-			return ll
-		}
-		return map[string]string{}
-	}()
-
-	t, ok := ll[toolchainv1alpha1.WorkspaceVisibilityLabel]
 	switch {
-	case ok && !isCommunity:
-		delete(ll, toolchainv1alpha1.WorkspaceVisibilityLabel)
+	case err != nil && errors.IsNotFound(err):
+		if !isCommunity {
+			return false, nil
+		}
 
-	case ok && isCommunity && t != toolchainv1alpha1.WorkspaceVisibilityCommunity:
-		fallthrough
-	case !ok && isCommunity:
-		ll[toolchainv1alpha1.WorkspaceVisibilityLabel] = toolchainv1alpha1.WorkspaceVisibilityCommunity
+		csb := &toolchainv1alpha1.SpaceBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      n,
+				Namespace: space.Namespace,
+				Labels: map[string]string{
+					toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: "public-viewer",
+					toolchainv1alpha1.SpaceBindingSpaceLabelKey:            space.Name,
+				},
+			},
+			Spec: toolchainv1alpha1.SpaceBindingSpec{
+				MasterUserRecord: "public-viewer",
+				Space:            space.Name,
+				SpaceRole:        "viewer",
+			},
+		}
+		if err := r.Client.Create(ctx, csb); err != nil && !errors.IsAlreadyExists(err) {
+			return false, err
+		}
+		return true, nil
 
-	// ok && isCommunity && t == WorkspaceVisibilityCommunity
-	// !ok && !isCommunity
-	default:
-		return false, nil
-	}
-
-	space.SetLabels(ll)
-	if err := r.Client.Update(ctx, space); err != nil {
+	case err != nil && !errors.IsNotFound(err):
 		return false, err
+
+	default:
+		if isCommunity {
+			return false, nil
+		}
+
+		if err := r.Client.Delete(ctx, &toolchainv1alpha1.SpaceBinding{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      n,
+				Namespace: space.Namespace,
+			},
+		}); err != nil && !errors.IsNotFound(err) {
+			return false, err
+		}
+		return true, nil
 	}
-	return true, nil
 }
 
 // Auxiliary function to check is Space should be labelled as community or not.
