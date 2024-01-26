@@ -15,7 +15,6 @@ import (
 	"github.com/codeready-toolchain/toolchain-common/pkg/condition"
 	"github.com/codeready-toolchain/toolchain-common/pkg/hash"
 	"github.com/codeready-toolchain/toolchain-common/pkg/spacebinding"
-	"github.com/codeready-toolchain/toolchain-common/pkg/workspace"
 
 	errs "github.com/pkg/errors"
 	"github.com/redhat-cop/operator-utils/pkg/util"
@@ -100,10 +99,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 	// check if community label is correctly set on space,
 	// if not, update the label and requeue space reconciliation
-	if updated, err := r.ensureCommunitySpaceBindingExistsIfNeeded(ctx, space); err != nil {
-		return ctrl.Result{}, err
-	} else if updated {
-		return ctrl.Result{Requeue: true}, nil
+	if err := r.ensureCommunitySpaceUserConfigExistsIfNeeded(ctx, space); err != nil {
+		return reconcile.Result{}, nil
 	}
 
 	// if the NSTemplateSet was created or updated, we want to make sure that the NSTemplateSet Controller was kicked before
@@ -129,79 +126,35 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 // Ensures the community label is set on the space if an SBR for special user public-viewer is found.
 // If any changes is made to the space, this function returns `true` as first value, otherwise `false`.
-func (r *Reconciler) ensureCommunitySpaceBindingExistsIfNeeded(ctx context.Context, space *toolchainv1alpha1.Space) (bool, error) {
-	isCommunity := space.Config.Visibility == toolchainv1alpha1.SpaceVisibilityCommunity
-	n := fmt.Sprintf("public-viewer:%s", space.Name)
-	sb := toolchainv1alpha1.SpaceBinding{}
-	t := types.NamespacedName{Namespace: space.Namespace, Name: n}
+func (r *Reconciler) ensureCommunitySpaceUserConfigExistsIfNeeded(ctx context.Context, space *toolchainv1alpha1.Space) error {
+	sb := toolchainv1alpha1.SpaceUserConfig{}
+	t := types.NamespacedName{Namespace: space.Namespace, Name: space.Name}
 	err := r.Client.Get(ctx, t, &sb)
-
 	switch {
-	case err != nil && errors.IsNotFound(err):
-		if !isCommunity {
-			return false, nil
-		}
+	case err == nil:
+		return nil
 
-		csb := &toolchainv1alpha1.SpaceBinding{
+	case errors.IsNotFound(err):
+		cfg := toolchainv1alpha1.SpaceUserConfig{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      n,
+				Name:      space.Name,
 				Namespace: space.Namespace,
-				Labels: map[string]string{
-					toolchainv1alpha1.SpaceBindingMasterUserRecordLabelKey: "public-viewer",
-					toolchainv1alpha1.SpaceBindingSpaceLabelKey:            space.Name,
-				},
 			},
-			Spec: toolchainv1alpha1.SpaceBindingSpec{
-				MasterUserRecord: "public-viewer",
-				Space:            space.Name,
-				SpaceRole:        "viewer",
+			Spec: toolchainv1alpha1.SpaceUserConfigSpec{
+				Visibility: toolchainv1alpha1.SpaceVisibilityPrivate,
 			},
 		}
-		if err := r.Client.Create(ctx, csb); err != nil && !errors.IsAlreadyExists(err) {
-			return false, err
+		if err := r.Client.Create(ctx, &cfg); err != nil {
+			if errors.IsAlreadyExists(err) {
+				return nil
+			}
+			return err
 		}
-		return true, nil
-
-	case err != nil && !errors.IsNotFound(err):
-		return false, err
+		return nil
 
 	default:
-		if isCommunity {
-			return false, nil
-		}
-
-		if err := r.Client.Delete(ctx, &toolchainv1alpha1.SpaceBinding{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      n,
-				Namespace: space.Namespace,
-			},
-		}); err != nil && !errors.IsNotFound(err) {
-			return false, err
-		}
-		return true, nil
+		return err
 	}
-}
-
-// Auxiliary function to check is Space should be labelled as community or not.
-// This function returns `true` if an SBR for the special user public-viewer is found, otherwise `false`.
-func (r *Reconciler) isSpaceCommunity(ctx context.Context, space *toolchainv1alpha1.Space) (bool, error) {
-	spacebindings := toolchainv1alpha1.SpaceBindingList{}
-	if err := r.Client.List(ctx,
-		&spacebindings,
-		runtimeclient.InNamespace(space.Namespace),
-		runtimeclient.MatchingLabels{
-			toolchainv1alpha1.SpaceBindingSpaceLabelKey: space.Name,
-		},
-	); err != nil {
-		return false, err
-	}
-
-	for _, sb := range spacebindings.Items {
-		if sb.Spec.MasterUserRecord == workspace.PublicViewerMUR {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 // setFinalizers sets the finalizers for Space

@@ -2180,41 +2180,26 @@ func TestCommunityField(t *testing.T) {
 	require.NoError(t, err)
 	base1nsTier := tiertest.Base1nsTier(t, tiertest.CurrentBase1nsTemplates)
 
-	t.Run("community SpaceBinding for user public-viewer is created for community space", func(t *testing.T) {
+	t.Run("private visibility spaceuserconfig is created if not found", func(t *testing.T) {
 		// given
 		s := spacetest.NewSpace(test.HostOperatorNs, "oddity", spacetest.WithSpecTargetCluster("member-1"))
-		s.Config.Visibility = toolchainv1alpha1.SpaceVisibilityCommunity
 
 		hostClient := test.NewFakeClient(t, s, base1nsTier)
 		member1 := NewMemberClusterWithTenantRole(t, "member-1", corev1.ConditionTrue)
 		ctrl := newReconciler(hostClient, member1)
 
 		// when
-		res, err := ctrl.Reconcile(context.TODO(), requestFor(s))
+		_, err := ctrl.Reconcile(context.TODO(), requestFor(s))
 
 		// then
 		require.NoError(t, err)
-		assert.True(t, res.Requeue) // requeue requested explicitly when NSTemplateSet is created, even though watching the resource is enough to trigger a new reconcile loop
 		spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).Exists()
-		spacebindingtest.AssertThatSpaceBinding(t, s.Namespace, "public-viewer", s.Name, hostClient).Exists()
 
-		t.Run("SpaceBinding for user public-viewer is deleted when community space is set as private", func(t *testing.T) {
-			// given
-			s = s.DeepCopy()
-			s.Config.Visibility = toolchainv1alpha1.SpaceVisibilityPrivate
-
-			hostClient := test.NewFakeClient(t, s, base1nsTier)
-			member1 := NewMemberClusterWithTenantRole(t, "member-1", corev1.ConditionTrue)
-			ctrl := newReconciler(hostClient, member1)
-
-			// when
-			res, err := ctrl.Reconcile(context.TODO(), requestFor(s))
-
-			// then
-			require.NoError(t, err)
-			assert.True(t, res.Requeue) // requeue requested explicitly when NSTemplateSet is created, even though watching the resource is enough to trigger a new reconcile loop
-			spacetest.AssertThatSpace(t, test.HostOperatorNs, "oddity", hostClient).Exists()
-			spacebindingtest.AssertThatSpaceBinding(t, s.Namespace, "public-viewer", s.Name, hostClient).DoesNotExist()
-		})
+		cfg := toolchainv1alpha1.SpaceUserConfig{}
+		err = hostClient.Get(context.TODO(), types.NamespacedName{
+			Name:      s.Name,
+			Namespace: s.Namespace,
+		}, &cfg)
+		require.NoError(t, err)
 	})
 }
