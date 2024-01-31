@@ -6,7 +6,25 @@ import (
 	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/toolchain-common/pkg/cluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
+
+func NewSpaceUserConfig(space *toolchainv1alpha1.Space, visibility toolchainv1alpha1.SpaceVisibility, scheme *runtime.Scheme) (*toolchainv1alpha1.SpaceUserConfig, error) {
+	spaceCfg := toolchainv1alpha1.SpaceUserConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      space.Name,
+			Namespace: space.Namespace,
+		},
+		Spec: toolchainv1alpha1.SpaceUserConfigSpec{
+			Visibility: visibility,
+		},
+	}
+	if err := controllerutil.SetOwnerReference(space, &spaceCfg, scheme); err != nil {
+		return nil, err
+	}
+	return &spaceCfg, nil
+}
 
 // NewSpace creates a space CR for a UserSignup object.
 func NewSpace(userSignup *toolchainv1alpha1.UserSignup, targetClusterName string, compliantUserName, tier string) *toolchainv1alpha1.Space {

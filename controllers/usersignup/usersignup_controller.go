@@ -698,10 +698,19 @@ func (r *Reconciler) ensureSpace(
 	}
 	tCluster := targetCluster(mur.Spec.UserAccounts[0].TargetCluster)
 
+	// Create Space
 	space = spaceutil.NewSpace(userSignup, tCluster.getClusterName(), mur.Name, spaceTier.Name)
-
 	err = r.Client.Create(ctx, space)
 	if err != nil {
+		return nil, false, err
+	}
+
+	// Create SpaceUserConfig
+	spaceCfg, err := spaceutil.NewSpaceUserConfig(space, toolchainv1alpha1.SpaceVisibilityPrivate, r.Client.Scheme())
+	if err != nil {
+		return nil, false, err
+	}
+	if err := r.Client.Create(ctx, spaceCfg); err != nil {
 		return nil, false, err
 	}
 
