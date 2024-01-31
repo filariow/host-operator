@@ -35,6 +35,7 @@ objects:
           - socialevents
           - spacebindings
           - spaces
+          - spaceuserconfigs
           - toolchainconfigs
           - toolchainstatuses
           - proxyplugins
