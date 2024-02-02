@@ -19,6 +19,7 @@ import (
 	"github.com/codeready-toolchain/host-operator/controllers/spacecleanup"
 	"github.com/codeready-toolchain/host-operator/controllers/spacecompletion"
 	"github.com/codeready-toolchain/host-operator/controllers/spacerequest"
+	"github.com/codeready-toolchain/host-operator/controllers/spaceuserconfig"
 	"github.com/codeready-toolchain/host-operator/controllers/toolchainconfig"
 	"github.com/codeready-toolchain/host-operator/controllers/toolchainstatus"
 	"github.com/codeready-toolchain/host-operator/controllers/usersignup"
@@ -329,6 +330,13 @@ func main() { // nolint:gocyclo
 		MemberClusters: memberClusters,
 	}).SetupWithManager(mgr, memberClusters); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Space")
+		os.Exit(1)
+	}
+	if err = (&spaceuserconfig.Reconciler{
+		Client:    mgr.GetClient(),
+		Namespace: namespace,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SpaceUserConfig")
 		os.Exit(1)
 	}
 	if err = (&spacecompletion.Reconciler{
