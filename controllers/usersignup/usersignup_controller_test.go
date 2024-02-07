@@ -2483,6 +2483,7 @@ func TestUserSignupReactivateAfterDeactivated(t *testing.T) {
 				PropagatedClaims: toolchainv1alpha1.PropagatedClaims{
 					Email:  "john.doe@redhat.com",
 					UserID: "UserID123",
+					Sub:    "UserID123",
 				},
 				PreferredUsername: meta.Name,
 			},

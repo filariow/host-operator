@@ -18,6 +18,7 @@ import (
 	"github.com/codeready-toolchain/host-operator/controllers/spacebindingrequest"
 	"github.com/codeready-toolchain/host-operator/controllers/spacecleanup"
 	"github.com/codeready-toolchain/host-operator/controllers/spacecompletion"
+	"github.com/codeready-toolchain/host-operator/controllers/spaceprovisionerconfig"
 	"github.com/codeready-toolchain/host-operator/controllers/spacerequest"
 	"github.com/codeready-toolchain/host-operator/controllers/spaceuserconfig"
 	"github.com/codeready-toolchain/host-operator/controllers/toolchainconfig"
@@ -371,6 +372,12 @@ func main() { // nolint:gocyclo
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SocialEvent")
+		os.Exit(1)
+	}
+	if err = (&spaceprovisionerconfig.Reconciler{
+		Client: mgr.GetClient(),
+	}).SetupWithManager(ctx, mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "SpaceProvisionerConfig")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
