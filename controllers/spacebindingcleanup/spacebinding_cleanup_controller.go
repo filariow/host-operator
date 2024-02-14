@@ -89,6 +89,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return ctrl.Result{}, errs.Wrapf(err, "unable to get the bound Space")
 	}
 
+	if spaceBinding.Spec.MasterUserRecord == "public-viewer" {
+		return ctrl.Result{}, nil
+	}
+
 	murName := types.NamespacedName{Namespace: spaceBinding.Namespace, Name: spaceBinding.Spec.MasterUserRecord}
 	mur := &toolchainv1alpha1.MasterUserRecord{}
 	if err := r.Client.Get(ctx, murName, mur); err != nil {
