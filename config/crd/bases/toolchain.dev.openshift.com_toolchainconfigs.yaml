@@ -812,6 +812,16 @@ spec:
                     type: object
                     x-kubernetes-map-type: atomic
                 type: object
+              publicViewer:
+                description: Contains all configuration needed for the enabling PublicViewer
+                  support
+                properties:
+                  username:
+                    maxLength: 63
+                    minLength: 1
+                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                    type: string
+                type: object
             type: object
           status:
             description: ToolchainConfigStatus defines the observed state of ToolchainConfig
