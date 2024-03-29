@@ -29,6 +29,11 @@ type ToolchainConfig struct {
 	secrets map[string]map[string]string
 }
 
+func GetCachedToolchainPublicViewerConfig() commonconfig.PublicViewerConfig {
+	cfg := GetCachedToolchainConfig()
+	return cfg.PublicViewer()
+}
+
 // GetToolchainConfig returns a ToolchainConfig using the cache, or if the cache was not initialized
 // then retrieves the latest config using the provided client and updates the cache
 func GetToolchainConfig(cl runtimeclient.Client) (ToolchainConfig, error) {

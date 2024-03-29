@@ -44,10 +44,10 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 // Reconciler reconciles a SpaceBinding object
 type Reconciler struct {
 	runtimeclient.Client
-	Scheme             *runtime.Scheme
-	Namespace          string
-	MemberClusters     map[string]cluster.Cluster
-	PublicViewerConfig commonconfig.PublicViewerConfig
+	Scheme                 *runtime.Scheme
+	Namespace              string
+	MemberClusters         map[string]cluster.Cluster
+	PublicViewerConfigFunc func() commonconfig.PublicViewerConfig
 }
 
 //+kubebuilder:rbac:groups=toolchain.dev.openshift.com,resources=spacebindings,verbs=get;list;watch;create;update;patch;delete
@@ -92,7 +92,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 	}
 
 	// If PublicViewer is enabled and spacebinding references the PublicViewer user, skip SpaceBinding deletion
-	if r.PublicViewerConfig.IsPublicViewer(spaceBinding.Spec.MasterUserRecord) {
+	if r.isPublicViewer(spaceBinding.Spec.MasterUserRecord) {
 		logger.Info("skipping deletion of spacebinding for PublicViewer", "username", spaceBinding.Spec.MasterUserRecord, "spacebinding", spaceBinding.Name)
 		return ctrl.Result{}, nil
 	}
@@ -181,6 +181,10 @@ func (r *Reconciler) deleteSpaceBindingRequest(ctx context.Context, sbrAssociate
 		return norequeue, errs.Wrapf(err, "unable to delete the SpaceBindingRequest")
 	}
 	return requeueDelay, nil
+}
+
+func (r *Reconciler) isPublicViewer(username string) bool {
+	return r.PublicViewerConfigFunc != nil && r.PublicViewerConfigFunc().IsPublicViewer(username)
 }
 
 // SpaceBindingRequestAssociated is a wrapper that holds details regarding SB, and it's SBR if there is any associated.

@@ -53,7 +53,7 @@ func TestDeleteSpaceBinding(t *testing.T) {
 		t.Run("public-viewer SpaceBinding is removed when redhat space is missing", func(t *testing.T) {
 			fakeClient := test.NewFakeClient(t, sbPublicViewerRedhatView)
 			reconciler := prepareReconciler(t, fakeClient)
-			reconciler.PublicViewerConfig = publicViewerConfig
+			reconciler.PublicViewerConfigFunc = func() commonconfig.PublicViewerConfig { return publicViewerConfig }
 
 			// when
 			res, err := reconciler.Reconcile(context.TODO(), requestFor(sbPublicViewerRedhatView))
@@ -67,7 +67,7 @@ func TestDeleteSpaceBinding(t *testing.T) {
 		t.Run("public-viewer SpaceBinding is NOT removed when MUR is missing", func(t *testing.T) {
 			fakeClient := test.NewFakeClient(t, redhatSpace, sbPublicViewerRedhatView)
 			reconciler := prepareReconciler(t, fakeClient)
-			reconciler.PublicViewerConfig = publicViewerConfig
+			reconciler.PublicViewerConfigFunc = func() commonconfig.PublicViewerConfig { return publicViewerConfig }
 
 			// when
 			res, err := reconciler.Reconcile(context.TODO(), requestFor(sbPublicViewerRedhatView))
