@@ -127,6 +127,10 @@ func (c *ToolchainConfig) Users() UsersConfig {
 	return UsersConfig{c.cfg.Host.Users}
 }
 
+func (c *ToolchainConfig) PublicViewer() PublicViewerConfig {
+	return PublicViewerConfig{c.cfg.PublicViewerConfig}
+}
+
 type AutoApprovalConfig struct {
 	approval toolchainv1alpha1.AutomaticApprovalConfig
 }
@@ -339,4 +343,12 @@ func (d UsersConfig) ForbiddenUsernameSuffixes() []string {
 		return c == ','
 	})
 	return v
+}
+
+type PublicViewerConfig struct {
+	publicViewerConfig *toolchainv1alpha1.PublicViewerConfiguration
+}
+
+func (c PublicViewerConfig) Enabled() bool {
+	return c.publicViewerConfig != nil && c.publicViewerConfig.Enabled
 }
