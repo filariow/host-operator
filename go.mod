@@ -114,4 +114,4 @@ require (
 
 go 1.20
 
-replace github.com/codeready-toolchain/api => github.com/filariow/toolchain-api v0.0.0-20240430081956-c9bf496de75d
+replace github.com/codeready-toolchain/api => github.com/filariow/toolchain-api v0.0.0-20240430085238-0e8b6c2944ba
