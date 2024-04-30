@@ -26,6 +26,10 @@ import (
 const norequeue = 0 * time.Second
 const requeueDelay = 10 * time.Second
 
+type PublicViewerConfig interface {
+	Enabled() bool
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	onlyForDeletion := builder.WithPredicates(OnlyDeleteAndGenericPredicate{})
@@ -43,9 +47,10 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 // Reconciler reconciles a SpaceBinding object
 type Reconciler struct {
 	runtimeclient.Client
-	Scheme         *runtime.Scheme
-	Namespace      string
-	MemberClusters map[string]cluster.Cluster
+	Scheme                *runtime.Scheme
+	Namespace             string
+	MemberClusters        map[string]cluster.Cluster
+	GetPublicViewerConfig func() PublicViewerConfig
 }
 
 //+kubebuilder:rbac:groups=toolchain.dev.openshift.com,resources=spacebindings,verbs=get;list;watch;create;update;patch;delete
@@ -89,20 +94,21 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return ctrl.Result{}, errs.Wrapf(err, "unable to get the bound Space")
 	}
 
-	murName := types.NamespacedName{Namespace: spaceBinding.Namespace, Name: spaceBinding.Spec.MasterUserRecord}
-	mur := &toolchainv1alpha1.MasterUserRecord{}
-	if err := r.Client.Get(ctx, murName, mur); err != nil {
-		if errors.IsNotFound(err) {
-			logger.Info("the MUR was not found", "MasterUserRecord", spaceBinding.Spec.MasterUserRecord)
-			requeueAfter, err := r.deleteSpaceBinding(ctx, spaceBinding)
-			return ctrl.Result{
-				RequeueAfter: requeueAfter,
-			}, err
+	if !r.GetPublicViewerConfig().Enabled() || spaceBinding.Spec.MasterUserRecord != toolchainv1alpha1.KubesawAuthenticatedUsername {
+		murName := types.NamespacedName{Namespace: spaceBinding.Namespace, Name: spaceBinding.Spec.MasterUserRecord}
+		mur := &toolchainv1alpha1.MasterUserRecord{}
+		if err := r.Client.Get(ctx, murName, mur); err != nil {
+			if errors.IsNotFound(err) {
+				logger.Info("the MUR was not found", "MasterUserRecord", spaceBinding.Spec.MasterUserRecord)
+				requeueAfter, err := r.deleteSpaceBinding(ctx, spaceBinding)
+				return ctrl.Result{
+					RequeueAfter: requeueAfter,
+				}, err
+			}
+			// error while reading MUR
+			return ctrl.Result{}, errs.Wrapf(err, "unable to get the bound MUR")
 		}
-		// error while reading MUR
-		return ctrl.Result{}, errs.Wrapf(err, "unable to get the bound MUR")
 	}
-
 	return ctrl.Result{}, nil
 }
 

@@ -356,6 +356,10 @@ func main() { // nolint:gocyclo
 		Scheme:         mgr.GetScheme(),
 		Namespace:      namespace,
 		MemberClusters: clusterScopedMemberClusters,
+		GetPublicViewerConfig: func() spacebindingcleanup.PublicViewerConfig {
+			cfg := toolchainconfig.GetCachedToolchainConfig()
+			return cfg.PublicViewer()
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "SpaceBindingCleanup")
 		os.Exit(1)
