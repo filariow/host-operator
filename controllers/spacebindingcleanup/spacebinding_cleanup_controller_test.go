@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/codeready-toolchain/api/api/v1alpha1"
+	toolchainv1alpha1 "github.com/codeready-toolchain/api/api/v1alpha1"
 	"github.com/codeready-toolchain/host-operator/pkg/apis"
 	"github.com/codeready-toolchain/host-operator/pkg/cluster"
 	. "github.com/codeready-toolchain/host-operator/test"
@@ -29,17 +30,61 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+type publicViewerConfigMock struct{ enabled bool }
+
+func (m publicViewerConfigMock) Enabled() bool {
+	return m.enabled
+}
+
+func newPublicViewerConfigProviderMock(enabled bool) func() PublicViewerConfig {
+	return func() PublicViewerConfig {
+		return publicViewerConfigMock{
+			enabled: enabled,
+		}
+	}
+}
+
 func TestDeleteSpaceBinding(t *testing.T) {
 	// given
 	sbLaraRedhatAdmin := sb.NewSpaceBinding("lara", "redhat", "admin", "signupA")
 	sbJoeRedhatView := sb.NewSpaceBinding("joe", "redhat", "view", "signupB")
 	sbLaraIbmEdit := sb.NewSpaceBinding("lara", "ibm", "edit", "signupC")
+	sbPublicViewerRedhatView := sb.NewSpaceBinding(toolchainv1alpha1.KubesawAuthenticatedUsername, "redhat", "view", "signupD")
 
 	redhatSpace := spacetest.NewSpace(test.HostOperatorNs, "redhat")
 	ibmSpace := spacetest.NewSpace(test.HostOperatorNs, "ibm")
 
 	laraMur := masteruserrecord.NewMasterUserRecord(t, "lara")
 	joeMur := masteruserrecord.NewMasterUserRecord(t, "joe")
+
+	t.Run("publicViewer config is enabled", func(t *testing.T) {
+		t.Run("kubesaw-authenticated SpaceBinding is removed when redhat space is missing", func(t *testing.T) {
+			fakeClient := test.NewFakeClient(t, sbPublicViewerRedhatView)
+			reconciler := prepareReconciler(t, fakeClient)
+
+			// when
+			res, err := reconciler.Reconcile(context.TODO(), requestFor(sbPublicViewerRedhatView))
+
+			// then
+			require.Equal(t, res.RequeueAfter, time.Duration(0)) // no requeue
+			require.NoError(t, err)
+			sb.AssertThatSpaceBinding(t, test.HostOperatorNs, toolchainv1alpha1.KubesawAuthenticatedUsername, "redhat", fakeClient).DoesNotExist()
+		})
+
+		t.Run("kubesaw-authenticated SpaceBinding is NOT removed when MUR is missing", func(t *testing.T) {
+			fakeClient := test.NewFakeClient(t, redhatSpace, sbPublicViewerRedhatView)
+			reconciler := prepareReconciler(t, fakeClient)
+			reconciler.GetPublicViewerConfig = newPublicViewerConfigProviderMock(true)
+
+			// when
+			res, err := reconciler.Reconcile(context.TODO(), requestFor(sbPublicViewerRedhatView))
+
+			// then
+			require.Equal(t, res.RequeueAfter, time.Duration(0)) // no requeue
+			require.NoError(t, err)
+			sb.AssertThatSpaceBinding(t, test.HostOperatorNs, toolchainv1alpha1.KubesawAuthenticatedUsername, "redhat", fakeClient).Exists()
+		})
+	})
 
 	t.Run("lara-redhat SpaceBinding removed when redhat space is missing", func(t *testing.T) {
 
@@ -243,10 +288,11 @@ func prepareReconciler(t *testing.T, hostCl runtimeclient.Client, memberClusters
 	}
 
 	reconciler := &Reconciler{
-		Namespace:      test.HostOperatorNs,
-		Scheme:         s,
-		Client:         hostCl,
-		MemberClusters: clusters,
+		Namespace:             test.HostOperatorNs,
+		Scheme:                s,
+		Client:                hostCl,
+		MemberClusters:        clusters,
+		GetPublicViewerConfig: newPublicViewerConfigProviderMock(false),
 	}
 	return reconciler
 }
