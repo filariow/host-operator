@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -50,7 +51,7 @@ type Reconciler struct {
 	Scheme                *runtime.Scheme
 	Namespace             string
 	MemberClusters        map[string]cluster.Cluster
-	GetPublicViewerConfig func() PublicViewerConfig
+	GetPublicViewerConfig func(context.Context, client.Client) PublicViewerConfig
 }
 
 //+kubebuilder:rbac:groups=toolchain.dev.openshift.com,resources=spacebindings,verbs=get;list;watch;create;update;patch;delete
@@ -94,7 +95,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return ctrl.Result{}, errs.Wrapf(err, "unable to get the bound Space")
 	}
 
-	if !r.GetPublicViewerConfig().Enabled() || spaceBinding.Spec.MasterUserRecord != toolchainv1alpha1.KubesawAuthenticatedUsername {
+	if !r.isPublicViewerEnabled(ctx) || spaceBinding.Spec.MasterUserRecord != toolchainv1alpha1.KubesawAuthenticatedUsername {
 		murName := types.NamespacedName{Namespace: spaceBinding.Namespace, Name: spaceBinding.Spec.MasterUserRecord}
 		mur := &toolchainv1alpha1.MasterUserRecord{}
 		if err := r.Client.Get(ctx, murName, mur); err != nil {
@@ -110,6 +111,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		}
 	}
 	return ctrl.Result{}, nil
+}
+
+func (r *Reconciler) isPublicViewerEnabled(ctx context.Context) bool {
+	return r.GetPublicViewerConfig(ctx, r.Client).Enabled()
 }
 
 func (r *Reconciler) deleteSpaceBinding(ctx context.Context, spaceBinding *toolchainv1alpha1.SpaceBinding) (time.Duration, error) {

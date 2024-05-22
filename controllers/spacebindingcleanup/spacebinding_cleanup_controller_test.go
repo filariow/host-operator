@@ -26,6 +26,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -36,8 +37,8 @@ func (m publicViewerConfigMock) Enabled() bool {
 	return m.enabled
 }
 
-func newPublicViewerConfigProviderMock(enabled bool) func() PublicViewerConfig {
-	return func() PublicViewerConfig {
+func newPublicViewerConfigProviderMock(enabled bool) func(context.Context, client.Client) PublicViewerConfig {
+	return func(context.Context, client.Client) PublicViewerConfig {
 		return publicViewerConfigMock{
 			enabled: enabled,
 		}
