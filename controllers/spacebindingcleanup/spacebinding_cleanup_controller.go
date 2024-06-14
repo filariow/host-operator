@@ -31,6 +31,8 @@ type PublicViewerConfig interface {
 	Enabled() bool
 }
 
+type PublicViewerConfigProvider func(context.Context, client.Client) PublicViewerConfig
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	onlyForDeletion := builder.WithPredicates(OnlyDeleteAndGenericPredicate{})
@@ -51,7 +53,7 @@ type Reconciler struct {
 	Scheme                *runtime.Scheme
 	Namespace             string
 	MemberClusters        map[string]cluster.Cluster
-	GetPublicViewerConfig func(context.Context, client.Client) PublicViewerConfig
+	GetPublicViewerConfig PublicViewerConfigProvider
 }
 
 //+kubebuilder:rbac:groups=toolchain.dev.openshift.com,resources=spacebindings,verbs=get;list;watch;create;update;patch;delete

@@ -37,13 +37,16 @@ func (m publicViewerConfigMock) Enabled() bool {
 	return m.enabled
 }
 
-func newPublicViewerConfigProviderMock(enabled bool) func(context.Context, client.Client) PublicViewerConfig {
+func newPublicViewerConfigProvider(enabled bool) PublicViewerConfigProvider {
 	return func(context.Context, client.Client) PublicViewerConfig {
-		return publicViewerConfigMock{
-			enabled: enabled,
-		}
+		return publicViewerConfigMock{enabled: enabled}
 	}
 }
+
+var (
+	publicViewerConfigEnabledMockProvider  PublicViewerConfigProvider = newPublicViewerConfigProvider(true)
+	publicViewerConfigDisabledMockProvider PublicViewerConfigProvider = newPublicViewerConfigProvider(false)
+)
 
 func TestDeleteSpaceBinding(t *testing.T) {
 	// given
@@ -75,7 +78,7 @@ func TestDeleteSpaceBinding(t *testing.T) {
 		t.Run("kubesaw-authenticated SpaceBinding is NOT removed when MUR is missing", func(t *testing.T) {
 			fakeClient := test.NewFakeClient(t, redhatSpace, sbPublicViewerRedhatView)
 			reconciler := prepareReconciler(t, fakeClient)
-			reconciler.GetPublicViewerConfig = newPublicViewerConfigProviderMock(true)
+			reconciler.GetPublicViewerConfig = publicViewerConfigEnabledMockProvider
 
 			// when
 			res, err := reconciler.Reconcile(context.TODO(), requestFor(sbPublicViewerRedhatView))
@@ -293,7 +296,7 @@ func prepareReconciler(t *testing.T, hostCl runtimeclient.Client, memberClusters
 		Scheme:                s,
 		Client:                hostCl,
 		MemberClusters:        clusters,
-		GetPublicViewerConfig: newPublicViewerConfigProviderMock(false),
+		GetPublicViewerConfig: publicViewerConfigDisabledMockProvider,
 	}
 	return reconciler
 }
